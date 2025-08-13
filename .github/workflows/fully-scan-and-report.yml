@@ -1,5 +1,5 @@
 
-name: Trivy Full Scan
+name: Trivy Full Scan 222
 
 on:
   push:
@@ -78,15 +78,18 @@ jobs:
             --format json \
             --output trivy-results/secret-scan.json
 
-      # SBOM Generation and Scan
-      - name: Generate SBOM
+      # SBOM Generation with Vulnerability Scanning
+      - name: Generate SBOM with Vulnerabilities
         run: |
           mkdir -p sbom
-          trivy sbom --format cyclonedx --output sbom/sbom.json .
+          trivy sbom --format cyclonedx \
+            --scanners vuln \
+            --output sbom/sbom.json .
 
       - name: Scan SBOM
         run: |
           trivy sbom sbom/sbom.json \
+            --scanners vuln \
             --format json \
             --output trivy-results/sbom-scan.json
 
