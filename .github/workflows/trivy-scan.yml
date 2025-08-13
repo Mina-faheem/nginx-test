@@ -45,16 +45,6 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
 
-
-      - name: Generate SBOM
-        run: |
-          mkdir -p sbom
-          trivy sbom --format cyclonedx --output sbom/sbom.json .
-
-      - name: Scan SBOM
-        run: trivy sbom sbom/sbom.json
-
-
       - name: Trivy IaC Scan
         uses: aquasecurity/trivy-action@0.28.0
         with:
