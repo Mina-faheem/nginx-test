@@ -1,10 +1,14 @@
 
-name: Trivy Full Scan and report
+name: Trivy Full Scan
 
 on:
   push:
     branches: [main]
   pull_request:
+
+permissions:
+  contents: read
+  security-events: write
 
 jobs:
   trivy-scan:
@@ -39,7 +43,7 @@ jobs:
 
       # Upload SARIF to GitHub Security tab
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results/image-scan.sarif
 
