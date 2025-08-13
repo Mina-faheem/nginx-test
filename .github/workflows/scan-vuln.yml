@@ -1,5 +1,5 @@
 
-name: Trivy-Full-Scan
+name: Trivy Full Scan 2
 
 on:
   push:
@@ -11,28 +11,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout source code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up Trivy CLI
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.1
         with:
           trivy-version: '0.56.1'
 
-      # Cache Trivy binary
       - name: Cache Trivy binary
         uses: actions/cache@v4
         with:
           path: ~/.local/bin/trivy-bin
           key: trivy-binary-v0.56.1-Linux-X64
 
-      # Build Docker image
       - name: Build Docker image
         run: docker build -t my-app:${{ github.sha }} .
 
-      # Trivy Image Scan
       - name: Trivy Image Scan
         uses: aquasecurity/trivy-action@0.28.0
         with:
@@ -44,7 +39,6 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL,HIGH
 
-      # Trivy Filesystem Scan
       - name: Trivy Filesystem Scan
         uses: aquasecurity/trivy-action@0.28.0
         with:
@@ -54,8 +48,7 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
 
-      # Trivy Repository Scan
-      - name: Trivy Repo Scan
+      - name: Trivy Repository Scan
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: repo
@@ -64,7 +57,6 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
 
-      # Trivy IaC Scan (Terraform, Dockerfile, etc.)
       - name: Trivy IaC Scan
         uses: aquasecurity/trivy-action@0.28.0
         with:
@@ -74,29 +66,26 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
 
-      # Trivy Secret Scan
       - name: Trivy Secret Scan
         run: trivy fs --scanners secret --severity CRITICAL,HIGH .
 
-      # Generate SBOM
       - name: Generate SBOM
         run: |
           mkdir -p sbom
           trivy sbom --format cyclonedx --output sbom/sbom.json .
 
-      # Scan SBOM
       - name: Scan SBOM
         run: trivy sbom sbom/sbom.json
-      # Upload SBOM Artifact
+
       - name: Upload SBOM Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sbom-report
           path: sbom/sbom.json
-      # Upload Trivy Reports (optional)
+
       - name: Upload Trivy Reports
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: trivy-reports
           path: |
