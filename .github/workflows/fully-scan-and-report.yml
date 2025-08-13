@@ -1,0 +1,94 @@
+
+name: Trivy Full Scan and report
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.1
+        with:
+          trivy-version: '0.56.1'
+
+      - name: Cache Trivy binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/trivy-bin
+          key: trivy-binary-v0.56.1-Linux-X64
+
+      - name: Build Docker image
+        run: docker build -t my-app:${{ github.sha }} .
+
+      # Image Scan - SARIF
+      - name: Trivy Image Scan (SARIF)
+        run: |
+          mkdir -p trivy-results
+          trivy image my-app:${{ github.sha }} \
+            --format sarif \
+            --output trivy-results/image-scan.sarif \
+            --ignore-unfixed=false
+
+      # Upload SARIF to GitHub Security tab
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-results/image-scan.sarif
+
+      # Filesystem Scan - JSON
+      - name: Trivy Filesystem Scan
+        run: |
+          trivy fs . \
+            --format json \
+            --output trivy-results/fs-scan.json \
+            --ignore-unfixed=false
+
+      # Repository Scan - JSON
+      - name: Trivy Repo Scan
+        run: |
+          trivy repo . \
+            --format json \
+            --output trivy-results/repo-scan.json \
+            --ignore-unfixed=false
+
+      # IaC Scan - JSON
+      - name: Trivy IaC Scan
+        run: |
+          trivy config . \
+            --format json \
+            --output trivy-results/iac-scan.json
+
+      # Secret Scan - JSON
+      - name: Trivy Secret Scan
+        run: |
+          trivy fs . \
+            --scanners secret \
+            --format json \
+            --output trivy-results/secret-scan.json
+
+      # SBOM Generation and Scan
+      - name: Generate SBOM
+        run: |
+          mkdir -p sbom
+          trivy sbom --format cyclonedx --output sbom/sbom.json .
+
+      - name: Scan SBOM
+        run: |
+          trivy sbom sbom/sbom.json \
+            --format json \
+            --output trivy-results/sbom-scan.json
+
+      # Upload All Reports
+      - name: Upload Trivy Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-full-reports
+          path: trivy-results/
