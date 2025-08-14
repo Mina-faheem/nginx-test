@@ -58,30 +58,39 @@ jobs:
           pip install requests
           python3 <<EOF
           import json, os, requests
+
           scan_dir = "trivy-results"
-          pushgateway_url = "http://0f1dcdfc471d.mylabserver.com:9091"
+          pushgateway_url = "http://localhost:9091/metrics/job/trivy_scan"
 
           def convert_to_prometheus_metrics(file_path):
               with open(file_path, 'r') as f:
-                  data = json.load(f)
+                  try:
+                      data = json.load(f)
+                  except json.JSONDecodeError:
+                      print(f"Skipping invalid JSON file: {file_path}")
+                      return None
+
               metrics = []
               severity_counts = {}
               for result in data.get("Results", []):
                   for vuln in result.get("Vulnerabilities", []):
                       severity = vuln.get("Severity", "UNKNOWN")
                       severity_counts[severity] = severity_counts.get(severity, 0) + 1
+
               metrics.append("# HELP trivy_vulnerabilities_total Total number of vulnerabilities by severity")
               metrics.append("# TYPE trivy_vulnerabilities_total gauge")
               for severity, count in severity_counts.items():
-                  metrics.append(f'trivy_vulnerabilities_total{{severity=\"{severity}\"}} {count}')
+                  metrics.append(f'trivy_vulnerabilities_total{{severity="{severity}"}} {count}')
+
               return "\\n".join(metrics)
 
           for filename in os.listdir(scan_dir):
               if filename.endswith(".json"):
                   file_path = os.path.join(scan_dir, filename)
                   metrics_data = convert_to_prometheus_metrics(file_path)
-                  response = requests.post(pushgateway_url, data=metrics_data.encode('utf-8'))
-                  print(f"Pushed metrics from {filename} with status code {response.status_code}")
+                  if metrics_data:
+                      response = requests.post(pushgateway_url, data=metrics_data.encode('utf-8'))
+                      print(f"Pushed metrics from {filename} with status code {response.status_code}")
           EOF
 
       - name: Upload SBOM Artifact
