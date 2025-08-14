@@ -1,5 +1,5 @@
 
-name: Trivy Full Scan 33
+name: Trivy Full Scan 2
 
 on:
   push:
@@ -68,7 +68,7 @@ jobs:
       - name: Generate SBOM from Docker image
         run: |
           mkdir -p sbom
-          trivy sbom --format cyclonedx --output sbom/sbom.json my-app:${{ github.sha }}
+          trivy image --format cyclonedx --output sbom/sbom.json my-app:${{ github.sha }}
 
       - name: Scan SBOM
         run: trivy sbom sbom/sbom.json
