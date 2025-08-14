@@ -1,14 +1,10 @@
 
-name: Trivy Full Scan 222
+name: Trivy Full Scan 33
 
 on:
   push:
     branches: [main]
   pull_request:
-
-permissions:
-  contents: read
-  security-events: write
 
 jobs:
   trivy-scan:
@@ -32,70 +28,62 @@ jobs:
       - name: Build Docker image
         run: docker build -t my-app:${{ github.sha }} .
 
-      # Image Scan - SARIF
-      - name: Trivy Image Scan (SARIF)
-        run: |
-          mkdir -p trivy-results
-          trivy image my-app:${{ github.sha }} \
-            --format sarif \
-            --output trivy-results/image-scan.sarif \
-            --ignore-unfixed=false
-
-      # Upload SARIF to GitHub Security tab
-      - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Trivy Image Scan
+        uses: aquasecurity/trivy-action@0.28.0
         with:
-          sarif_file: trivy-results/image-scan.sarif
+          scan-type: image
+          image-ref: 'my-app:${{ github.sha }}'
+          format: table
+          exit-code: 0
+          ignore-unfixed: true
+          vuln-type: os,library
 
-      # Filesystem Scan - JSON
       - name: Trivy Filesystem Scan
-        run: |
-          trivy fs . \
-            --format json \
-            --output trivy-results/fs-scan.json \
-            --ignore-unfixed=false
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          format: table
+          exit-code: 0
 
-      # Repository Scan - JSON
-      - name: Trivy Repo Scan
-        run: |
-          trivy repo . \
-            --format json \
-            --output trivy-results/repo-scan.json \
-            --ignore-unfixed=false
+      - name: Trivy Repository Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: repo
+          scan-ref: '.'
+          format: table
+          exit-code: 0
 
-      # IaC Scan - JSON
       - name: Trivy IaC Scan
-        run: |
-          trivy config . \
-            --format json \
-            --output trivy-results/iac-scan.json
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: '.'
+          format: table
+          exit-code: 0
 
-      # Secret Scan - JSON
       - name: Trivy Secret Scan
-        run: |
-          trivy fs . \
-            --scanners secret \
-            --format json \
-            --output trivy-results/secret-scan.json
+        run: trivy fs --scanners secret .
 
-      # SBOM Generation with Vulnerability Scanning
-      - name: Generate SBOM with Vulnerabilities
+      - name: Generate SBOM from Docker image
         run: |
           mkdir -p sbom
-          trivy sbom --format cyclonedx \
-            --scanners vuln \
-            --output sbom/sbom.json .
+          trivy sbom --format cyclonedx --output sbom/sbom.json my-app:${{ github.sha }}
 
       - name: Scan SBOM
-        run: |
-          trivy sbom sbom/sbom.json \
-            --scanners vuln \
-            --format json \
-            --output trivy-results/sbom-scan.json
+        run: trivy sbom sbom/sbom.json
 
-      # Upload All Reports
-      - name: Upload Trivy Reports
+      - name: Upload SBOM Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-full-reports
-          path: trivy-results/
+          name: sbom-report
+          path: sbom/sbom.json
+
+      - name: Upload Trivy Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: |
+            trivy-results/
+            sbom/
