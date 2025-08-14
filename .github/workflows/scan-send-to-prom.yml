@@ -93,6 +93,15 @@ jobs:
                       print(f"Pushed metrics from {filename} with status code {response.status_code}")
           EOF
 
+      - name: Show Summary of Trivy Scan Results
+        run: |
+          echo "🔍 Trivy Scan Summary:"
+          for file in trivy-results/*.json; do
+            echo "📄 Summary for $file:"
+            jq '[.Results[]?.Vulnerabilities[]? | .Severity] | group_by(.) | map({(.[0]): length}) | add' "$file"
+            echo ""
+          done
+
       - name: Upload SBOM Artifact
         uses: actions/upload-artifact@v4
         with:
