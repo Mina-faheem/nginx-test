@@ -1,0 +1,75 @@
+
+name: Trivy Full Scan prom
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.1
+        with:
+          trivy-version: '0.56.1'
+
+      - name: Cache Trivy binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/trivy-bin
+          key: trivy-binary-v0.56.1-Linux-X64
+
+      - name: Build Docker image
+        run: docker build -t my-app:${{ github.sha }} .
+
+      - name: Trivy Image Scan
+        run: |
+          mkdir -p trivy-results
+          trivy image --format prometheus --output trivy-results/image.prom my-app:${{ github.sha }}
+
+      - name: Trivy Filesystem Scan
+        run: trivy fs --format prometheus --output trivy-results/fs.prom .
+
+      - name: Trivy Repository Scan
+        run: trivy repo --format prometheus --output trivy-results/repo.prom .
+
+      - name: Trivy IaC Scan
+        run: trivy config --format prometheus --output trivy-results/iac.prom .
+
+      - name: Trivy Secret Scan
+        run: trivy fs --scanners secret --format prometheus --output trivy-results/secret.prom .
+
+      - name: Generate SBOM from Docker image
+        run: |
+          mkdir -p sbom
+          trivy image --format cyclonedx --output sbom/sbom.json my-app:${{ github.sha }}
+
+      - name: Scan SBOM
+        run: trivy sbom sbom/sbom.json --format prometheus --output trivy-results/sbom.prom
+
+      - name: Push Trivy Metrics to Prometheus Pushgateway
+        run: |
+          for file in trivy-results/*.prom; do
+            curl --data-binary "@$file" http://http://0f1dcdfc471d.mylabserver.com:9091/metrics/job/trivy_scan
+          done
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-report
+          path: sbom/sbom.json
+
+      - name: Upload Trivy Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: |
+            trivy-results/
+            sbom/
