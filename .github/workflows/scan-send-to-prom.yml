@@ -60,7 +60,7 @@ jobs:
           import json, os, requests
 
           scan_dir = "trivy-results"
-          pushgateway_url = "http://localhost:9091/metrics/job/trivy_scan"
+          pushgateway_url = "http://0f1dcdfc471d.mylabserver.com/:9091/metrics/job/trivy_scan"
 
           def convert_to_prometheus_metrics(file_path):
               with open(file_path, 'r') as f:
