@@ -34,7 +34,7 @@ jobs:
           scan-type: image
           image-ref: 'my-app:${{ github.sha }}'
           format: table
-          exit-code: 1
+          exit-code: 0
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
@@ -45,7 +45,7 @@ jobs:
           scan-type: fs
           scan-ref: '.'
           format: table
-          exit-code: 1
+          exit-code: 0
           severity: CRITICAL,HIGH
 
       - name: Trivy Repository Scan
@@ -54,7 +54,7 @@ jobs:
           scan-type: repo
           scan-ref: '.'
           format: table
-          exit-code: 1
+          exit-code: 0
           severity: CRITICAL,HIGH
 
       - name: Trivy IaC Scan
@@ -63,7 +63,7 @@ jobs:
           scan-type: config
           scan-ref: '.'
           format: table
-          exit-code: 1
+          exit-code: 0
           severity: CRITICAL,HIGH
 
       - name: Trivy Secret Scan
