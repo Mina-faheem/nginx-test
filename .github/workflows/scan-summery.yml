@@ -98,18 +98,19 @@ jobs:
           echo "🔍 Trivy Scan Summary"
           echo "======================"
           echo "🛠️ Image Scan:"
-          cat trivy-results/image-scan.txt
+          cat trivy-results/image-scan.txt || echo "No image scan results found."
 
           echo "📁 Filesystem Scan:"
-          cat trivy-results/fs-scan.txt
+          cat trivy-results/fs-scan.txt || echo "No filesystem scan results found."
+
           echo "📦 Repository Scan:"
-          cat trivy-results/repo-scan.txt
+          cat trivy-results/repo-scan.txt || echo "No repository scan results found."
 
           echo "⚙️ IaC Scan:"
-          cat trivy-results/iac-scan.txt
+          cat trivy-results/iac-scan.txt || echo "No IaC scan results found."
 
           echo "🔐 Secret Scan:"
-          cat trivy-results/secret-scan.txt
+          cat trivy-results/secret-scan.txt || echo "No secret scan results found."
 
           echo "📜 SBOM Scan:"
-          cat trivy-results/sbom-scan.txt
+          cat trivy-results/sbom-scan.txt || echo "No SBOM scan results found."
