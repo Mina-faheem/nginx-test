@@ -1,0 +1,112 @@
+
+name: Trivy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.1
+        with:
+          trivy-version: '0.56.1'
+
+      - name: Cache Trivy binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/trivy-bin
+          key: trivy-binary-v0.56.1-Linux-X64
+
+      - name: Build Docker image
+        run: docker build -t my-app:${{ github.sha }} .
+
+      - name: Trivy Image Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: 'my-app:${{ github.sha }}'
+          format: table
+          exit-code: 0
+          ignore-unfixed: true
+          vuln-type: os,library
+
+      - name: Trivy Filesystem Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          format: table
+          exit-code: 0
+
+      - name: Trivy Repository Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: repo
+          scan-ref: '.'
+          format: table
+          exit-code: 0
+
+      - name: Trivy IaC Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: '.'
+          format: table
+          exit-code: 0
+
+      - name: Trivy Secret Scan
+        run: trivy fs --scanners secret --format table . | tee trivy-results/secret-summary.txt
+
+      - name: Generate SBOM from Docker image
+        run: |
+          mkdir -p sbom
+          trivy image --format cyclonedx --output sbom/sbom.json my-app:${{ github.sha }}
+
+      - name: Scan SBOM
+        run: trivy sbom sbom/sbom.json --format table | tee trivy-results/sbom-summary.txt
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-report
+          path: sbom/sbom.json
+
+      - name: Upload Trivy Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: |
+            trivy-results/
+            sbom/
+
+      - name: Summarize Trivy Scan Results
+        if: always()
+        run: |
+          echo "🔍 Trivy Scan Summary"
+          echo "======================"
+          echo "🛠️ Image Scan:"
+          trivy image --severity CRITICAL,HIGH --format table my-app:${{ github.sha }} | tee trivy-results/image-summary.txt
+
+          echo "📁 Filesystem Scan:"
+          trivy fs --severity CRITICAL,HIGH --format table . | tee trivy-results/fs-summary.txt
+
+          echo "📦 Repository Scan:"
+          trivy repo --severity CRITICAL,HIGH --format table . | tee trivy-results/repo-summary.txt
+
+          echo "⚙️ IaC Scan:"
+          trivy config --severity CRITICAL,HIGH --format table . | tee trivy-results/iac-summary.txt
+
+          echo "🔐 Secret Scan:"
+          cat trivy-results/secret-summary.txt
+
+          echo "📜 SBOM Scan:"
+          cat trivy-results/sbom-summary.txt
