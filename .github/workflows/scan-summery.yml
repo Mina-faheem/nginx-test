@@ -1,6 +1,5 @@
 
 name: Trivy
-
 on:
   push:
     branches: [main]
@@ -13,6 +12,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create results directory
+        run: mkdir -p trivy-results sbom
 
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.1
@@ -70,9 +72,7 @@ jobs:
         run: trivy fs --scanners secret --format table . > trivy-results/secret-scan.txt
 
       - name: Generate SBOM from Docker image
-        run: |
-          mkdir -p sbom
-          trivy image --format cyclonedx --output sbom/sbom.json my-app:${{ github.sha }}
+        run: trivy image --format cyclonedx --output sbom/sbom.json my-app:${{ github.sha }}
 
       - name: Scan SBOM
         run: trivy sbom sbom/sbom.json --format table > trivy-results/sbom-scan.txt
