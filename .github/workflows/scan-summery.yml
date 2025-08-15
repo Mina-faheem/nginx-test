@@ -34,6 +34,7 @@ jobs:
           scan-type: image
           image-ref: 'my-app:${{ github.sha }}'
           format: table
+          output: trivy-results/image-scan.txt
           exit-code: 0
           ignore-unfixed: true
           vuln-type: os,library
@@ -44,6 +45,7 @@ jobs:
           scan-type: fs
           scan-ref: '.'
           format: table
+          output: trivy-results/fs-scan.txt
           exit-code: 0
 
       - name: Trivy Repository Scan
@@ -52,6 +54,7 @@ jobs:
           scan-type: repo
           scan-ref: '.'
           format: table
+          output: trivy-results/repo-scan.txt
           exit-code: 0
 
       - name: Trivy IaC Scan
@@ -60,10 +63,11 @@ jobs:
           scan-type: config
           scan-ref: '.'
           format: table
+          output: trivy-results/iac-scan.txt
           exit-code: 0
 
       - name: Trivy Secret Scan
-        run: trivy fs --scanners secret --format table . | tee trivy-results/secret-summary.txt
+        run: trivy fs --scanners secret --format table . > trivy-results/secret-scan.txt
 
       - name: Generate SBOM from Docker image
         run: |
@@ -71,7 +75,7 @@ jobs:
           trivy image --format cyclonedx --output sbom/sbom.json my-app:${{ github.sha }}
 
       - name: Scan SBOM
-        run: trivy sbom sbom/sbom.json --format table | tee trivy-results/sbom-summary.txt
+        run: trivy sbom sbom/sbom.json --format table > trivy-results/sbom-scan.txt
 
       - name: Upload SBOM Artifact
         uses: actions/upload-artifact@v4
@@ -94,19 +98,18 @@ jobs:
           echo "🔍 Trivy Scan Summary"
           echo "======================"
           echo "🛠️ Image Scan:"
-          trivy image --severity CRITICAL,HIGH --format table my-app:${{ github.sha }} | tee trivy-results/image-summary.txt
+          cat trivy-results/image-scan.txt
 
           echo "📁 Filesystem Scan:"
-          trivy fs --severity CRITICAL,HIGH --format table . | tee trivy-results/fs-summary.txt
-
+          cat trivy-results/fs-scan.txt
           echo "📦 Repository Scan:"
-          trivy repo --severity CRITICAL,HIGH --format table . | tee trivy-results/repo-summary.txt
+          cat trivy-results/repo-scan.txt
 
           echo "⚙️ IaC Scan:"
-          trivy config --severity CRITICAL,HIGH --format table . | tee trivy-results/iac-summary.txt
+          cat trivy-results/iac-scan.txt
 
           echo "🔐 Secret Scan:"
-          cat trivy-results/secret-summary.txt
+          cat trivy-results/secret-scan.txt
 
           echo "📜 SBOM Scan:"
-          cat trivy-results/sbom-summary.txt
+          cat trivy-results/sbom-scan.txt
